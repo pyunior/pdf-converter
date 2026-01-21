@@ -124,8 +124,8 @@
         <h1>JPG to PDF Converter</h1>
         <form id="uploadForm" action="/convert" method="post" enctype="multipart/form-data">
             <label class="upload-area" id="dropArea">
-                <input type="file" name="file" id="fileInput" accept=".jpg,.jpeg">
-                <p>Drop your image here or <span>browse</span></p>
+                <input type="file" name="files" id="fileInput" accept=".jpg,.jpeg" multiple>
+                <p>Drop up to 5 images here or <span>browse</span></p>
                 <p class="file-name" id="fileName"></p>
             </label>
             <button type="submit" id="convertBtn" disabled>Convert to PDF</button>
@@ -163,11 +163,29 @@
         fileInput.addEventListener('change', updateFileName);
 
         function updateFileName() {
-            if (fileInput.files.length) {
-                const file = fileInput.files[0];
-                const ext = file.name.split('.').pop().toLowerCase();
-                if (['jpg', 'jpeg'].includes(ext)) {
-                    fileName.textContent = file.name;
+            const files = fileInput.files;
+            if (files.length) {
+                if (files.length > 5) {
+                    fileName.textContent = '';
+                    convertBtn.disabled = true;
+                    status.textContent = 'Maximum 5 files allowed';
+                    status.className = 'status error';
+                    return;
+                }
+
+                let allValid = true;
+                for (const file of files) {
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (!['jpg', 'jpeg'].includes(ext)) {
+                        allValid = false;
+                        break;
+                    }
+                }
+
+                if (allValid) {
+                    fileName.textContent = files.length === 1
+                        ? files[0].name
+                        : `${files.length} files selected`;
                     convertBtn.disabled = false;
                     status.textContent = '';
                 } else {
@@ -198,7 +216,7 @@
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = fileInput.files[0].name.replace(/\.[^.]+$/, '.pdf');
+                    a.download = 'converted.pdf';
                     a.click();
                     URL.revokeObjectURL(url);
                     status.textContent = 'Done!';

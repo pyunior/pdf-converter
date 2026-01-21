@@ -17,37 +17,46 @@ def index():
 
 @app.route('/convert', methods=['POST'])
 def convert():
-    if 'file' not in request.files:
-        return 'No file uploaded', 400
+    if 'files' not in request.files:
+        return 'No files uploaded', 400
 
-    file = request.files['file']
+    files = request.files.getlist('files')
 
-    if file.filename == '':
-        return 'No file selected', 400
+    if not files or files[0].filename == '':
+        return 'No files selected', 400
 
-    if not allowed_file(file.filename):
-        return 'Only JPG/JPEG files are allowed', 400
+    if len(files) > 5:
+        return 'Maximum 5 files allowed', 400
+
+    for file in files:
+        if not allowed_file(file.filename):
+            return f'Only JPG/JPEG files are allowed: {file.filename}', 400
 
     try:
-        image = Image.open(file.stream)
-
-        if image.mode in ('RGBA', 'LA', 'P'):
-            image = image.convert('RGB')
+        images = []
+        for file in files:
+            img = Image.open(file.stream)
+            if img.mode in ('RGBA', 'LA', 'P'):
+                img = img.convert('RGB')
+            images.append(img)
 
         pdf_buffer = io.BytesIO()
-        image.save(pdf_buffer, 'PDF', resolution=100.0)
-        pdf_buffer.seek(0)
 
-        original_name = os.path.splitext(file.filename)[0]
+        if len(images) == 1:
+            images[0].save(pdf_buffer, 'PDF', resolution=100.0)
+        else:
+            images[0].save(pdf_buffer, 'PDF', resolution=100.0, save_all=True, append_images=images[1:])
+
+        pdf_buffer.seek(0)
 
         return send_file(
             pdf_buffer,
             mimetype='application/pdf',
             as_attachment=True,
-            download_name=f'{original_name}.pdf'
+            download_name='converted.pdf'
         )
     except Exception as e:
-        return f'Error converting file: {str(e)}', 500
+        return f'Error converting files: {str(e)}', 500
 
 if __name__ == '__main__':
     import os
